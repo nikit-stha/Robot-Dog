@@ -1,8 +1,16 @@
 import cv2
 from ultralytics import YOLO
 from config import Config
+from typing import List, Tuple
 
 cfg = Config()
+
+class PersonData:
+    bbox: Tuple[int, int, int, int] = None
+    conf: int = None
+    cls: str = None
+    id: int = None
+    
 
 class Detector:
 
@@ -20,8 +28,11 @@ class Detector:
 
 
     def findPeople(self, img, draw = True):
-        results = self.model(img, conf = self.conf, device = self.device)[0]
-
+        results = self.model.track(img,
+                                    conf = self.conf,
+                                    device = self.device,
+                                    persist = True,
+                                    tracker = "bytetrack.yaml")[0]
         if(draw):
             for box in results.boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
@@ -29,10 +40,11 @@ class Detector:
                 conf = float(box.conf[0])
                 cls = int(box.cls[0])
                 class_name = self.model.names[cls]
+                track_id = int(box.id[0]) if box.id is not None else -1
 
                 cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-                label = f"{class_name} : {conf:.2f}"
+                label = f"ID:{track_id} {class_name} : {conf:.2f}"
 
                 (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_COMPLEX, 0.5, 2)
                 cv2.rectangle(img, (x1, y1 - 20), (x1 + w, y1), (0, 255, 0), -1)
